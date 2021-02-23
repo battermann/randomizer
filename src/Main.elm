@@ -14,6 +14,7 @@ import Element
         , fill
         , height
         , htmlAttribute
+        , padding
         , paddingXY
         , rgb255
         , row
@@ -79,6 +80,11 @@ view model =
                 , button 67 (rgb255 249 199 79)
                 , button 75 (rgb255 249 65 68)
                 ]
+            , el [ centerX, padding 10 ] <|
+                Element.link []
+                    { url = "https://github.com/battermann/randomizer"
+                    , label = row [] [ Element.html (Html.div [] [ Html.i [ Html.Attributes.class "fab fa-github" ] [] ]), text " Source Code" ]
+                    }
             ]
 
 
