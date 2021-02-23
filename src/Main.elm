@@ -1,6 +1,7 @@
 module Main exposing (main)
 
-import Browser
+import Browser exposing (Document, UrlRequest)
+import Browser.Navigation as Nav
 import Element
     exposing
         ( Attribute
@@ -26,85 +27,166 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Html exposing (Html)
+import Html
 import Html.Attributes
 import Random
+import Url exposing (Url)
+import Url.Parser as Parser exposing ((</>), Parser)
+
+
+
+---- MODEL ----
+
+
+type alias Frequencies =
+    { first : Int
+    , second : Int
+    , third : Int
+    , fourth : Int
+    , fifth : Int
+    }
 
 
 type alias Model =
-    { percentage : Int
-    , actualPercentage : Float
+    { frequency : Int
+    , randomValue : Float
+    , key : Nav.Key
+    , url : Url
+    , frequencies : Frequencies
     }
 
 
 type Msg
     = Rnd Int
     | RandomNumberGenerated Float
+    | ChangedUrl Url
+    | ClickedLink UrlRequest
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( { percentage = 50, actualPercentage = 0.0 }, Cmd.none )
+
+---- ROUTING ----
+
+
+type Route
+    = Home
+    | Custom Int Int Int Int Int
+
+
+routeParser : Parser (Route -> a) a
+routeParser =
+    Parser.oneOf
+        [ Parser.map Home Parser.top
+        , Parser.map Custom (Parser.int </> Parser.int </> Parser.int </> Parser.int </> Parser.int)
+        ]
+
+
+
+---- UPDATE ----
+
+
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ url key =
+    let
+        initialModel =
+            { frequency = 50
+            , randomValue = 0.0
+            , key = key
+            , url = url
+            , frequencies =
+                { first = 25
+                , second = 33
+                , third = 50
+                , fourth = 67
+                , fifth = 75
+                }
+            }
+    in
+    case Parser.parse routeParser url of
+        Nothing ->
+            ( initialModel, Cmd.none )
+
+        Just Home ->
+            ( initialModel, Cmd.none )
+
+        Just (Custom first second third fourth fifth) ->
+            ( { frequency = third
+              , randomValue = 0.0
+              , key = key
+              , url = url
+              , frequencies =
+                    { first = first
+                    , second = second
+                    , third = third
+                    , fourth = fourth
+                    , fifth = fifth
+                    }
+              }
+            , Cmd.none
+            )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Rnd percentage ->
-            ( { model | percentage = percentage }, Random.generate RandomNumberGenerated <| Random.float 0.0 100.0 )
+        Rnd frequency ->
+            ( { model | frequency = frequency }, Random.generate RandomNumberGenerated <| Random.float 0.0 100.0 )
 
         RandomNumberGenerated rnd ->
-            ( { model | actualPercentage = rnd }, Cmd.none )
+            ( { model | randomValue = rnd }, Cmd.none )
+
+        ChangedUrl _ ->
+            ( model, Cmd.none )
+
+        ClickedLink _ ->
+            ( model, Cmd.none )
 
 
-main : Program () Model Msg
-main =
-    Browser.element
-        { init = init
-        , subscriptions = subscriptions
-        , update = update
-        , view = view
-        }
+
+---- VIEW ----
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
-    Element.layout [] <|
-        column [ width fill, height fill, spacing 2 ]
-            [ row [ width fill, height fill, spacing 2 ]
-                [ decide model ]
-            , row [ width fill, height fill, spacing 2 ]
-                [ button 25 (rgb255 142 202 230)
-                , button 33 (rgb255 33 158 188)
-                , button 50 (rgb255 144 190 109)
-                , button 67 (rgb255 249 199 79)
-                , button 75 (rgb255 249 65 68)
+    { title = "Randomiz3r"
+    , body =
+        [ Element.layout [] <|
+            column [ width fill, height fill, spacing 2 ]
+                [ row [ width fill, height fill, spacing 2 ]
+                    [ decide model ]
+                , row [ width fill, height fill, spacing 2 ]
+                    [ button model.frequencies.first (rgb255 142 202 230)
+                    , button model.frequencies.second (rgb255 33 158 188)
+                    , button model.frequencies.third (rgb255 144 190 109)
+                    , button model.frequencies.fourth (rgb255 249 199 79)
+                    , button model.frequencies.fifth (rgb255 249 65 68)
+                    ]
+                , el [ centerX, padding 10 ] <|
+                    Element.link []
+                        { url = "https://github.com/battermann/randomizer"
+                        , label = row [] [ Element.html (Html.div [] [ Html.i [ Html.Attributes.class "fab fa-github" ] [] ]), text " Source Code" ]
+                        }
                 ]
-            , el [ centerX, padding 10 ] <|
-                Element.link []
-                    { url = "https://github.com/battermann/randomizer"
-                    , label = row [] [ Element.html (Html.div [] [ Html.i [ Html.Attributes.class "fab fa-github" ] [] ]), text " Source Code" ]
-                    }
-            ]
+        ]
+    }
 
 
 decide : Model -> Element Msg
 decide model =
-    if toFloat model.percentage < model.actualPercentage then
-        no model.actualPercentage model.percentage
+    if toFloat model.frequency <= model.randomValue then
+        no model.randomValue model.frequency
 
     else
-        yes model.actualPercentage model.percentage
+        yes model.randomValue model.frequency
 
 
 yes : Float -> Int -> Element Msg
-yes actualPercentage percentage =
-    result actualPercentage percentage "YES" green
+yes randomValue frequency =
+    result randomValue frequency "YES" green
 
 
 no : Float -> Int -> Element Msg
-no actualPercentage percentage =
-    result actualPercentage percentage "NO" red
+no randomValue frequency =
+    result randomValue frequency "NO" red
 
 
 roundPercentag : Float -> Float
@@ -113,7 +195,7 @@ roundPercentag v =
 
 
 result : Float -> Int -> String -> Color -> Element Msg
-result actual percentage txt color =
+result actual frequency txt color =
     column
         [ Background.color color
         , Border.rounded 3
@@ -122,12 +204,12 @@ result actual percentage txt color =
         , userSelectNone
         ]
         [ el [ alignLeft, centerY, paddingXY 10 0 ] (text ("rnd: " ++ String.fromFloat (roundPercentag actual)))
-        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt percentage ++ " % "), text txt ])
+        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt frequency ++ " % "), text txt ])
         ]
 
 
 button : Int -> Color -> Element Msg
-button percentage color =
+button frequency color =
     Input.button
         [ Background.color color
         , Border.rounded 3
@@ -135,11 +217,11 @@ button percentage color =
         , height fill
         , userSelectNone
         ]
-        { onPress = Just (Rnd percentage)
+        { onPress = Just (Rnd frequency)
         , label =
             el
                 [ width fill ]
-                (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt percentage ++ " %")))
+                (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt frequency ++ " %")))
         }
 
 
@@ -158,6 +240,26 @@ userSelectNone =
     htmlAttribute <| Html.Attributes.style "user-select" "none"
 
 
+
+---- SUBSCRIPTIONS ----
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.none
+
+
+
+---- PROGRAM ----
+
+
+main : Program () Model Msg
+main =
+    Browser.application
+        { init = init
+        , subscriptions = subscriptions
+        , update = update
+        , view = view
+        , onUrlChange = ChangedUrl
+        , onUrlRequest = ClickedLink
+        }
