@@ -212,8 +212,8 @@ result actual frequency txt color =
         , height fill
         , userSelectNone
         ]
-        [ el [ alignLeft, centerY, paddingXY 10 0 ] (text ("rnd: " ++ String.fromFloat (roundPercentag actual)))
-        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt frequency ++ " % "), text txt ])
+        [ el [ alignLeft, paddingXY 10 10 ] (text ("rnd: " ++ String.fromFloat (roundPercentag actual)))
+        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt frequency ++ " %"), text txt ])
         ]
 
 
@@ -230,7 +230,7 @@ button frequency color =
         , label =
             el
                 [ width fill ]
-                (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt frequency ++ " %")))
+                (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt frequency)))
         }
 
 
