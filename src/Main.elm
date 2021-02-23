@@ -80,6 +80,31 @@ routeParser =
         ]
 
 
+urlUpdate : Url.Url -> Nav.Key -> Model -> Model
+urlUpdate url key model =
+    case Parser.parse routeParser url of
+        Nothing ->
+            model
+
+        Just Home ->
+            model
+
+        Just (Custom first second third fourth fifth) ->
+            { model
+                | frequency = third
+                , randomValue = 0.0
+                , key = key
+                , url = url
+                , frequencies =
+                    { first = first
+                    , second = second
+                    , third = third
+                    , fourth = fourth
+                    , fifth = fifth
+                    }
+            }
+
+
 
 ---- UPDATE ----
 
@@ -87,7 +112,7 @@ routeParser =
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     let
-        initialModel =
+        model =
             { frequency = 50
             , randomValue = 0.0
             , key = key
@@ -101,28 +126,7 @@ init _ url key =
                 }
             }
     in
-    case Parser.parse routeParser url of
-        Nothing ->
-            ( initialModel, Cmd.none )
-
-        Just Home ->
-            ( initialModel, Cmd.none )
-
-        Just (Custom first second third fourth fifth) ->
-            ( { frequency = third
-              , randomValue = 0.0
-              , key = key
-              , url = url
-              , frequencies =
-                    { first = first
-                    , second = second
-                    , third = third
-                    , fourth = fourth
-                    , fifth = fifth
-                    }
-              }
-            , Cmd.none
-            )
+    ( urlUpdate url key model, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -134,11 +138,16 @@ update msg model =
         RandomNumberGenerated rnd ->
             ( { model | randomValue = rnd }, Cmd.none )
 
-        ChangedUrl _ ->
-            ( model, Cmd.none )
+        ClickedLink urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
 
-        ClickedLink _ ->
-            ( model, Cmd.none )
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        ChangedUrl url ->
+            ( urlUpdate url model.key model, Cmd.none )
 
 
 
