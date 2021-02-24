@@ -4,8 +4,7 @@ import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav
 import Element
     exposing
-        ( Attribute
-        , Color
+        ( Color
         , Element
         , alignLeft
         , centerX
@@ -48,7 +47,7 @@ type alias Frequencies =
 
 
 type alias Model =
-    { frequency : Int
+    { selectedFrequency : Int
     , randomValue : Float
     , key : Nav.Key
     , url : Url
@@ -57,10 +56,10 @@ type alias Model =
 
 
 type Msg
-    = Rnd Int
+    = FrequencySelected Int
     | RandomNumberGenerated Float
-    | ChangedUrl Url
-    | ClickedLink UrlRequest
+    | UrlChanged Url
+    | LinkClicked UrlRequest
 
 
 
@@ -68,30 +67,30 @@ type Msg
 
 
 type Route
-    = Home
+    = Default
     | Custom Int Int Int Int Int
 
 
 routeParser : Parser (Route -> a) a
 routeParser =
     Parser.oneOf
-        [ Parser.map Home Parser.top
+        [ Parser.map Default Parser.top
         , Parser.map Custom (Parser.int </> Parser.int </> Parser.int </> Parser.int </> Parser.int)
         ]
 
 
-urlUpdate : Url.Url -> Nav.Key -> Model -> Model
-urlUpdate url key model =
+parseUrl : Url.Url -> Nav.Key -> Model -> Model
+parseUrl url key model =
     case Parser.parse routeParser url of
         Nothing ->
             model
 
-        Just Home ->
+        Just Default ->
             model
 
         Just (Custom first second third fourth fifth) ->
             { model
-                | frequency = third
+                | selectedFrequency = third
                 , randomValue = 0.0
                 , key = key
                 , url = url
@@ -109,11 +108,11 @@ urlUpdate url key model =
 ---- UPDATE ----
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
+init : Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init url key =
     let
         model =
-            { frequency = 50
+            { selectedFrequency = 50
             , randomValue = 0.0
             , key = key
             , url = url
@@ -126,19 +125,21 @@ init _ url key =
                 }
             }
     in
-    ( urlUpdate url key model, Cmd.none )
+    ( parseUrl url key model, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Rnd frequency ->
-            ( { model | frequency = frequency }, Random.generate RandomNumberGenerated <| Random.float 0.0 100.0 )
+        FrequencySelected selectedFrequency ->
+            ( { model | selectedFrequency = selectedFrequency }
+            , Random.generate RandomNumberGenerated <| Random.float 0.0 100.0
+            )
 
         RandomNumberGenerated rnd ->
             ( { model | randomValue = rnd }, Cmd.none )
 
-        ClickedLink urlRequest ->
+        LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
                     ( model, Nav.pushUrl model.key (Url.toString url) )
@@ -146,8 +147,8 @@ update msg model =
                 Browser.External href ->
                     ( model, Nav.load href )
 
-        ChangedUrl url ->
-            ( urlUpdate url model.key model, Cmd.none )
+        UrlChanged url ->
+            ( parseUrl url model.key model, Cmd.none )
 
 
 
@@ -181,21 +182,18 @@ view model =
 
 decide : Model -> Element Msg
 decide model =
-    if toFloat model.frequency <= model.randomValue then
-        no model.randomValue model.frequency
+    let
+        red =
+            rgb255 255 0 0
+
+        green =
+            rgb255 0 128 0
+    in
+    if toFloat model.selectedFrequency <= model.randomValue then
+        result model.randomValue model.selectedFrequency "NO" red
 
     else
-        yes model.randomValue model.frequency
-
-
-yes : Float -> Int -> Element Msg
-yes randomValue frequency =
-    result randomValue frequency "YES" green
-
-
-no : Float -> Int -> Element Msg
-no randomValue frequency =
-    result randomValue frequency "NO" red
+        result model.randomValue model.selectedFrequency "YES" green
 
 
 roundPercentag : Float -> Float
@@ -204,58 +202,34 @@ roundPercentag v =
 
 
 result : Float -> Int -> String -> Color -> Element Msg
-result actual frequency txt color =
+result actual selectedFrequency txt color =
     column
         [ Background.color color
         , Border.rounded 3
         , width fill
         , height fill
-        , userSelectNone
+        , htmlAttribute <| Html.Attributes.style "user-select" "none"
         ]
         [ el [ alignLeft, paddingXY 10 10 ] (text ("rnd: " ++ String.fromFloat (roundPercentag actual)))
-        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt frequency ++ " %"), text txt ])
+        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt selectedFrequency ++ " %"), text txt ])
         ]
 
 
 button : Int -> Color -> Element Msg
-button frequency color =
+button selectedFrequency color =
     Input.button
         [ Background.color color
         , Border.rounded 3
         , width fill
         , height fill
-        , userSelectNone
+        , htmlAttribute <| Html.Attributes.style "user-select" "none"
         ]
-        { onPress = Just (Rnd frequency)
+        { onPress = Just (FrequencySelected selectedFrequency)
         , label =
             el
                 [ width fill ]
-                (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt frequency)))
+                (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt selectedFrequency)))
         }
-
-
-red : Color
-red =
-    rgb255 255 0 0
-
-
-green : Color
-green =
-    rgb255 0 128 0
-
-
-userSelectNone : Attribute Msg
-userSelectNone =
-    htmlAttribute <| Html.Attributes.style "user-select" "none"
-
-
-
----- SUBSCRIPTIONS ----
-
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
 
 
 
@@ -265,10 +239,10 @@ subscriptions _ =
 main : Program () Model Msg
 main =
     Browser.application
-        { init = init
-        , subscriptions = subscriptions
+        { init = \_ -> init
+        , subscriptions = \_ -> Sub.none
         , update = update
         , view = view
-        , onUrlChange = ChangedUrl
-        , onUrlRequest = ClickedLink
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         }
