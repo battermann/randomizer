@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest)
+import Browser.Events
 import Browser.Navigation as Nav
 import Element
     exposing
@@ -47,16 +48,18 @@ type alias Frequencies =
 
 
 type alias Model =
-    { selectedFrequency : Int
+    { selectedFrequency : Maybe Int
     , randomValue : Float
     , key : Nav.Key
     , url : Url
     , frequencies : Frequencies
+    , clickedFrequency : Maybe Int
     }
 
 
 type Msg
     = FrequencySelected Int
+    | FrequencyClicked Int
     | RandomNumberGenerated Float
     | UrlChanged Url
     | LinkClicked UrlRequest
@@ -90,7 +93,7 @@ parseUrl url key model =
 
         Just (Custom first second third fourth fifth) ->
             { model
-                | selectedFrequency = third
+                | selectedFrequency = Nothing
                 , randomValue = 0.0
                 , key = key
                 , url = url
@@ -112,7 +115,7 @@ init : Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init url key =
     let
         model =
-            { selectedFrequency = 50
+            { selectedFrequency = Nothing
             , randomValue = 0.0
             , key = key
             , url = url
@@ -123,6 +126,7 @@ init url key =
                 , fourth = 67
                 , fifth = 75
                 }
+            , clickedFrequency = Nothing
             }
     in
     ( parseUrl url key model, Cmd.none )
@@ -132,7 +136,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         FrequencySelected selectedFrequency ->
-            ( { model | selectedFrequency = selectedFrequency }
+            ( { model
+                | selectedFrequency = Just selectedFrequency
+                , clickedFrequency = Nothing
+              }
             , Random.generate RandomNumberGenerated <| Random.float 0.0 100.0
             )
 
@@ -149,6 +156,9 @@ update msg model =
 
         UrlChanged url ->
             ( parseUrl url model.key model, Cmd.none )
+
+        FrequencyClicked frequency ->
+            ( { model | clickedFrequency = Just frequency, selectedFrequency = Nothing }, Cmd.none )
 
 
 
@@ -189,11 +199,23 @@ decide model =
         green =
             rgb255 0 128 0
     in
-    if toFloat model.selectedFrequency <= model.randomValue then
-        result model.randomValue model.selectedFrequency "NO" red
+    case model.selectedFrequency of
+        Just frequency ->
+            if toFloat frequency <= model.randomValue then
+                result model.randomValue frequency "NO" red
 
-    else
-        result model.randomValue model.selectedFrequency "YES" green
+            else
+                result model.randomValue frequency "YES" green
+
+        Nothing ->
+            el
+                [ Background.color (rgb255 128 128 128)
+                , Border.rounded 3
+                , width fill
+                , height fill
+                , htmlAttribute <| Html.Attributes.style "user-select" "none"
+                ]
+                Element.none
 
 
 roundPercentag : Float -> Float
@@ -209,9 +231,10 @@ result actual selectedFrequency txt color =
         , width fill
         , height fill
         , htmlAttribute <| Html.Attributes.style "user-select" "none"
+        , htmlAttribute <| Html.Attributes.style "animation" "fadeIn 1s"
         ]
         [ el [ alignLeft, paddingXY 10 10 ] (text ("rnd: " ++ String.fromFloat (roundPercentag actual)))
-        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt selectedFrequency ++ " %"), text txt ])
+        , el [ centerX, centerY, spacing 10 ] (row [ Font.size 32 ] [ text (String.fromInt selectedFrequency ++ " % "), text txt ])
         ]
 
 
@@ -224,12 +247,26 @@ button selectedFrequency color =
         , height fill
         , htmlAttribute <| Html.Attributes.style "user-select" "none"
         ]
-        { onPress = Just (FrequencySelected selectedFrequency)
+        { onPress = Just (FrequencyClicked selectedFrequency)
         , label =
             el
                 [ width fill ]
                 (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt selectedFrequency)))
         }
+
+
+
+---- SUBSCRIPTIONS ----
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.clickedFrequency of
+        Just frequency ->
+            Browser.Events.onAnimationFrame (\_ -> FrequencySelected frequency)
+
+        Nothing ->
+            Sub.none
 
 
 
@@ -240,7 +277,7 @@ main : Program () Model Msg
 main =
     Browser.application
         { init = \_ -> init
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         , update = update
         , view = view
         , onUrlChange = UrlChanged
