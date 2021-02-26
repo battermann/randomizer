@@ -180,11 +180,13 @@ view model =
                     , button model.frequencies.fourth (rgb255 249 199 79)
                     , button model.frequencies.fifth (rgb255 249 65 68)
                     ]
-                , el [ centerX, padding 10 ] <|
-                    Element.link []
+                , row [ centerX ]
+                    [ Element.link [ padding 10 ]
                         { url = "https://github.com/battermann/randomizer"
                         , label = row [] [ Element.html (Html.div [] [ Html.i [ Html.Attributes.class "fab fa-github" ] [] ]), text " Source Code" ]
                         }
+                    , el [ padding 10 ] (Element.html donate)
+                    ]
                 ]
         ]
     }
@@ -253,6 +255,42 @@ button selectedFrequency color =
                 [ width fill ]
                 (el [ centerX, centerY, Font.size 32 ] (text (String.fromInt selectedFrequency)))
         }
+
+
+donate : Html.Html msg
+donate =
+    Html.form
+        [ Html.Attributes.action "https://www.paypal.com/donate"
+        , Html.Attributes.method "post"
+        , Html.Attributes.target "_top"
+        ]
+        [ Html.input
+            [ Html.Attributes.name "hosted_button_id"
+            , Html.Attributes.type_ "hidden"
+            , Html.Attributes.value "QJA3Y3DLGWVQ8"
+            ]
+            []
+        , Html.text ""
+        , Html.input
+            [ Html.Attributes.alt "Donate with PayPal button"
+            , Html.Attributes.attribute "border" "0"
+            , Html.Attributes.name "submit"
+            , Html.Attributes.src "https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif"
+            , Html.Attributes.title "PayPal - The safer, easier way to pay online!"
+            , Html.Attributes.type_ "image"
+            ]
+            []
+        , Html.text ""
+        , Html.img
+            [ Html.Attributes.alt ""
+            , Html.Attributes.attribute "border" "0"
+            , Html.Attributes.attribute "height" "1"
+            , Html.Attributes.src "https://www.paypal.com/en_DE/i/scr/pixel.gif"
+            , Html.Attributes.attribute "width" "1"
+            ]
+            []
+        , Html.text ""
+        ]
 
 
 
