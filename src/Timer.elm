@@ -11,7 +11,9 @@ import Element
         , htmlAttribute
         , width
         )
+import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes
 import Random
@@ -77,6 +79,9 @@ button model =
         , width fill
         , height fill
         , htmlAttribute <| Html.Attributes.style "user-select" "none"
+        , Font.color (Element.rgb255 140 148 64)
+        , Font.family [ Font.typeface "Courier New", Font.monospace ]
+        , Background.color (Element.rgb255 40 42 46)
         ]
         { onPress = Just Clicked
         , label = Element.el [ height fill, width fill ] (Element.el [ centerX, centerY, Element.htmlAttribute <| Html.Attributes.style "font-size" "60vmin" ] (Element.text (model.currentRnd |> String.fromInt)))
