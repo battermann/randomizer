@@ -38,7 +38,7 @@ init url key interval =
       , key = key
       , url = url
       }
-    , Random.generate RandomNumberGenerated <| Random.int 0 100
+    , Random.generate RandomNumberGenerated <| Random.int 0 99
     )
 
 
@@ -53,7 +53,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Interval ->
-            ( model, Random.generate RandomNumberGenerated <| Random.int 0 100 )
+            ( model, Random.generate RandomNumberGenerated <| Random.int 0 99 )
 
         Tick ->
             if model.currentRnd < model.nextRnd then
