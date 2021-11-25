@@ -59,6 +59,7 @@ routeParser : Parser (Route -> a) a
 routeParser =
     Parser.oneOf
         [ Parser.map Timer (Parser.s "timer" </> Parser.int)
+        , Parser.map (Timer 0) (Parser.s "timer")
         , Parser.map DefaultFrequencies Parser.top
         , Parser.map CustomFrequencies (Parser.int </> Parser.int </> Parser.int </> Parser.int </> Parser.int)
         ]

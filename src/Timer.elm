@@ -25,6 +25,7 @@ type alias Model =
     { currentRnd : Int
     , nextRnd : Int
     , interval : Int
+    , step : Int
     , key : Nav.Key
     , url : Url
     }
@@ -35,6 +36,7 @@ init url key interval =
     ( { currentRnd = 0
       , nextRnd = 0
       , interval = interval
+      , step = 1
       , key = key
       , url = url
       }
@@ -56,17 +58,31 @@ update msg model =
             ( model, Random.generate RandomNumberGenerated <| Random.int 0 99 )
 
         Tick ->
-            if model.currentRnd < model.nextRnd then
-                ( { model | currentRnd = model.currentRnd + 1 }, Cmd.none )
+            if model.nextRnd - model.currentRnd > model.step then
+                ( { model | currentRnd = model.currentRnd + model.step }, Cmd.none )
 
-            else if model.currentRnd > model.nextRnd then
-                ( { model | currentRnd = model.currentRnd - 1 }, Cmd.none )
+            else if model.currentRnd - model.nextRnd > model.step then
+                ( { model | currentRnd = model.currentRnd - model.step }, Cmd.none )
 
             else
-                ( model, Cmd.none )
+                ( { model | currentRnd = model.nextRnd }, Cmd.none )
 
         RandomNumberGenerated rnd ->
-            ( { model | nextRnd = rnd }, Cmd.none )
+            ( { model
+                | nextRnd = rnd
+                , step =
+                    let
+                        step =
+                            abs (model.currentRnd - rnd) // 10
+                    in
+                    if step < 1 then
+                        1
+
+                    else
+                        step
+              }
+            , Cmd.none
+            )
 
         Clicked ->
             ( model, Random.generate RandomNumberGenerated <| Random.int 0 100 )
